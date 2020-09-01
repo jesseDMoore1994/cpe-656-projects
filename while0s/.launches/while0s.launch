@@ -4,7 +4,7 @@
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROGRAM.MSP430FR5969.ccxml.TI MSP430 USB1/MSP430" value="${build_artifact:while0s}"/>
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROJECT.MSP430FR5969.ccxml.TI MSP430 USB1/MSP430" value="while0s"/>
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_TARGET_CONFIG" value="${target_config_active_default:while0s}"/>
-<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.MSP430FR5969.ccxml.TI MSP430 USB1/MSP430" value="C:\Users\JesseMoore\workspace_v10\while0s\Debug\while0s.out"/>
+<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.MSP430FR5969.ccxml.TI MSP430 USB1/MSP430" value="C:\Users\JesseMoore\workspace_v10\cpe-656-projects\while0s\Debug\while0s.out"/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/while0s"/>
 </listAttribute>

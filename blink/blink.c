@@ -24,8 +24,7 @@ void main(void) {
                                             // to activate previously configured port settings
     P1DIR |= 0x01;                          // Set P1.0 to output direction
 
-    unsigned int x;
-    for(x=6; x>0; x--) {
+    for(;;) {
         volatile unsigned int i;            // volatile to prevent optimization
 
         P1OUT ^= 0x01;                      // Toggle P1.0 using exclusive-OR

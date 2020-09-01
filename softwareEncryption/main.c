@@ -11,42 +11,64 @@
 
 #include "aes.h"
 
-
+#ifdef PRINT_TO_CONSOLE
 static void phex(uint8_t* str);
+static void test_encrypt_ecb_verbose(void);
+#endif //PRINT_TO_CONSOLE
 static int test_encrypt_cbc(void);
 static int test_decrypt_cbc(void);
 static int test_encrypt_ctr(void);
 static int test_decrypt_ctr(void);
 static int test_encrypt_ecb(void);
 static int test_decrypt_ecb(void);
-static void test_encrypt_ecb_verbose(void);
 
+void blinkThreeTimes() {
+    unsigned int x;
+    for(x=6; x>0; x--) {
+        volatile unsigned int i;            // volatile to prevent optimization
+
+        P1OUT ^= 0x01;                      // Toggle P1.0 using exclusive-OR
+
+        i = 10000;                          // SW Delay
+        do i--;
+        while(i != 0);
+    }
+    P1OUT = 0x00;
+}
 
 int main(void)
 {
-    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+    WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
+    PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
+                                            // to activate previously configured port settings
+    P1DIR |= 0x01;                          // Set P1.0 to output direction
     int exit;
 
 #if defined(AES256)
-    printf("\nTesting AES256\n\n");
 #elif defined(AES192)
-    printf("\nTesting AES192\n\n");
 #elif defined(AES128)
-    printf("\nTesting AES128\n\n");
 #else
     printf("You need to specify a symbol between AES128, AES192 or AES256. Exiting");
     return 0;
 #endif
 
-    exit = test_encrypt_cbc() + test_decrypt_cbc() +
-    test_encrypt_ctr() + test_decrypt_ctr() +
-    test_decrypt_ecb() + test_encrypt_ecb();
-    test_encrypt_ecb_verbose();
-
+    unsigned int i;
+    blinkThreeTimes();
+    for(i=6; i < 7; i--)
+    {
+        exit = test_encrypt_cbc() + test_decrypt_cbc() +
+                test_encrypt_ctr() + test_decrypt_ctr() +
+                test_decrypt_ecb() + test_encrypt_ecb();
+#ifdef PRINT_TO_CONSOLE
+        test_encrypt_ecb_verbose();
+#endif //PRINT_TO_CONSOLE
+    }
+    blinkThreeTimes();
     return exit;
 }
 
 
+#ifdef PRINT_TO_CONSOLE
 // prints string as hex
 static void phex(uint8_t* str)
 {
@@ -105,7 +127,7 @@ static void test_encrypt_ecb_verbose(void)
     }
     printf("\n");
 }
-
+#endif //PRINT_TO_CONSOLE
 
 static int test_encrypt_ecb(void)
 {
@@ -128,13 +150,19 @@ static int test_encrypt_ecb(void)
     AES_init_ctx(&ctx, key);
     AES_ECB_encrypt(&ctx, in);
 
+#ifdef PRINT_TO_CONSOLE
     printf("ECB encrypt: ");
+#endif //PRINT_TO_CONSOLE
 
     if (0 == memcmp((char*) out, (char*) in, 16)) {
+#ifdef PRINT_TO_CONSOLE
         printf("SUCCESS!\n");
+#endif //PRINT_TO_CONSOLE
     return(0);
     } else {
+#ifdef PRINT_TO_CONSOLE
         printf("FAILURE!\n");
+#endif //PRINT_TO_CONSOLE
     return(1);
     }
 }
@@ -173,13 +201,19 @@ static int test_decrypt_cbc(void)
     AES_init_ctx_iv(&ctx, key, iv);
     AES_CBC_decrypt_buffer(&ctx, in, 64);
 
+#ifdef PRINT_TO_CONSOLE
     printf("CBC decrypt: ");
+#endif //PRINT_TO_CONSOLE
 
     if (0 == memcmp((char*) out, (char*) in, 64)) {
+#ifdef PRINT_TO_CONSOLE
         printf("SUCCESS!\n");
+#endif //PRINT_TO_CONSOLE
     return(0);
     } else {
+#ifdef PRINT_TO_CONSOLE
         printf("FAILURE!\n");
+#endif //PRINT_TO_CONSOLE
     return(1);
     }
 }
@@ -216,13 +250,19 @@ static int test_encrypt_cbc(void)
     AES_init_ctx_iv(&ctx, key, iv);
     AES_CBC_encrypt_buffer(&ctx, in, 64);
 
+#ifdef PRINT_TO_CONSOLE
     printf("CBC encrypt: ");
+#endif //PRINT_TO_CONSOLE
 
     if (0 == memcmp((char*) out, (char*) in, 64)) {
+#ifdef PRINT_TO_CONSOLE
         printf("SUCCESS!\n");
+#endif //PRINT_TO_CONSOLE
     return(0);
     } else {
+#ifdef PRINT_TO_CONSOLE
         printf("FAILURE!\n");
+#endif //PRINT_TO_CONSOLE
     return(1);
     }
 }
@@ -271,13 +311,19 @@ static int test_xcrypt_ctr(const char* xcrypt)
     AES_init_ctx_iv(&ctx, key, iv);
     AES_CTR_xcrypt_buffer(&ctx, in, 64);
 
+#ifdef PRINT_TO_CONSOLE
     printf("CTR %s: ", xcrypt);
+#endif //PRINT_TO_CONSOLE
 
     if (0 == memcmp((char *) out, (char *) in, 64)) {
+#ifdef PRINT_TO_CONSOLE
         printf("SUCCESS!\n");
+#endif //PRINT_TO_CONSOLE
     return(0);
     } else {
+#ifdef PRINT_TO_CONSOLE
         printf("FAILURE!\n");
+#endif //PRINT_TO_CONSOLE
     return(1);
     }
 }
@@ -304,13 +350,19 @@ static int test_decrypt_ecb(void)
     AES_init_ctx(&ctx, key);
     AES_ECB_decrypt(&ctx, in);
 
+#ifdef PRINT_TO_CONSOLE
     printf("ECB decrypt: ");
+#endif
 
     if (0 == memcmp((char*) out, (char*) in, 16)) {
+#ifdef PRINT_TO_CONSOLE
         printf("SUCCESS!\n");
+#endif
     return(0);
     } else {
+#ifdef PRINT_TO_CONSOLE
         printf("FAILURE!\n");
+#endif
     return(1);
     }
 }
