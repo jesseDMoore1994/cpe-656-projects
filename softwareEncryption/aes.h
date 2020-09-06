@@ -22,6 +22,9 @@
   #define CTR 1
 #endif
 
+#ifndef HW_ACCEL
+  #define HW_ACCEL 1
+#endif
 
 //#define AES128 1
 //#define AES192 1
@@ -42,6 +45,9 @@
 
 struct AES_ctx
 {
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)
+  uint8_t key[AES_KEYLEN];
+#endif
   uint8_t RoundKey[AES_keyExpSize];
 #if (defined(CBC) && (CBC == 1)) || (defined(CTR) && (CTR == 1))
   uint8_t Iv[AES_BLOCKLEN];
@@ -60,6 +66,10 @@ void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t* iv);
 // NB: ECB is considered insecure for most uses
 void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf);
 void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf);
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)
+void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks);
+void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks);
+#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 
 #endif // #if defined(ECB) && (ECB == !)
 

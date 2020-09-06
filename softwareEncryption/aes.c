@@ -36,6 +36,7 @@ NOTE:   String length must be evenly divisible by 16byte (str_len % 16 == 0)
 /* Includes:                                                                 */
 /*****************************************************************************/
 #include <string.h> // CBC mode, for memset
+#include <msp430.h>
 #include "aes.h"
 
 /*****************************************************************************/
@@ -124,7 +125,7 @@ static const uint8_t Rcon[11] = {
  *
  * From Wikipedia's article on the Rijndael key schedule @ https://en.wikipedia.org/wiki/Rijndael_key_schedule#Rcon
  *
- * "Only the first some of these constants are actually used – up to rcon[10] for AES-128 (as 11 round keys are needed),
+ * "Only the first some of these constants are actually used â€“ up to rcon[10] for AES-128 (as 11 round keys are needed),
  *  up to rcon[8] for AES-192, up to rcon[7] for AES-256. rcon[0] is not used in AES algorithm."
  */
 
@@ -221,21 +222,41 @@ static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key)
   }
 }
 
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)
+void storeKey(struct AES_ctx* ctx, const uint8_t* key)
+{
+    uint8_t i;
+    for (i=0; i<AES_KEYLEN; i++) {
+        ctx->key[i] = ((uint8_t *) key)[i];
+    }
+}
+#endif
+
 void AES_init_ctx(struct AES_ctx* ctx, const uint8_t* key)
 {
-  KeyExpansion(ctx->RoundKey, key);
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)//Key expansion performed by HW, store key for later
+    //storeKey(ctx, key);
+    memcpy (ctx->key, key, AES_KEYLEN);
+#else
+    KeyExpansion(ctx->RoundKey, key);
+#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 }
 #if (defined(CBC) && (CBC == 1)) || (defined(CTR) && (CTR == 1))
 void AES_init_ctx_iv(struct AES_ctx* ctx, const uint8_t* key, const uint8_t* iv)
 {
-  KeyExpansion(ctx->RoundKey, key);
-  memcpy (ctx->Iv, iv, AES_BLOCKLEN);
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)//Key expansion performed by HW, store key for later
+    storeKey(ctx, key);
+    memcpy (ctx->Iv, iv, AES_BLOCKLEN);
+#else
+    KeyExpansion(ctx->RoundKey, key);
+    memcpy (ctx->Iv, iv, AES_BLOCKLEN);
+#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 }
 void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t* iv)
 {
   memcpy (ctx->Iv, iv, AES_BLOCKLEN);
 }
-#endif
+#endif //(defined(CBC) && (CBC == 1)) || (defined(CTR) && (CTR == 1))
 
 // This function adds the round key to state.
 // The round key is added to the state by an XOR function.
@@ -468,6 +489,7 @@ void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf)
 {
   // The next function call encrypts the PlainText with the Key using AES algorithm.
   Cipher((state_t*)buf, ctx->RoundKey);
+
 }
 
 void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf)
@@ -476,6 +498,71 @@ void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf)
   InvCipher((state_t*)buf, ctx->RoundKey);
 }
 
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)
+void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks)
+{
+    AESACTL0 = AESSWRST;
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_0;
+    const uint8_t keylen_in_words = AES_KEYLEN/2;
+    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1);
+    switch (AES_KEYLEN) {
+        case 24: //AES192
+            AESACTL0 |= AESKL_1;
+            break;
+        case 32: //AES256
+            AESACTL0 |= AESKL_2;
+            break;
+        default: //Assume AES128
+            AESACTL0 |= AESKL_0;
+            break;
+    }
+
+    uint8_t i;
+    for (i=0; i<keylen_in_words; i++)
+        AESAKEY = ((uint16_t *) ctx->key)[i];
+
+    uint16_t k;
+    for (k=0; k<numBlocks; k++) {
+        for (i=0; i<8; i++)
+            AESADIN = ( (uint16_t*) in)[(k * 8) + i];
+        while (AESASTAT & AESBUSY) ;
+        for (i=0; i<8; i++)
+            ( (uint16_t*) out )[(k * 8) + i] = AESADOUT;
+    }
+}
+
+void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks)
+{
+    AESACTL0 = AESSWRST;
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_1;
+    const uint8_t keylen_in_words = AES_KEYLEN/2;
+    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1);
+    switch (AES_KEYLEN) {
+        case 24: //AES192
+            AESACTL0 |= AESKL_1;
+            break;
+        case 32: //AES256
+            AESACTL0 |= AESKL_2;
+            break;
+        default: //Assume AES128
+            AESACTL0 |= AESKL_0;
+            break;
+    }
+
+    uint8_t i;
+    for (i=0; i<keylen_in_words; i++)
+        AESAKEY = ((uint16_t *) ctx->key)[i];
+
+    uint16_t k;
+    for (k=0; k<numBlocks; k++) {
+        for (i=0; i<8; i++)
+            AESADIN = ( (uint16_t*) in)[(k * 8) + i];
+        while (AESASTAT & AESBUSY) ;
+        for (i=0; i<8; i++)
+            ( (uint16_t*) out )[(k * 8) + i] = AESADOUT;
+    }
+}
+#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 
 #endif // #if defined(ECB) && (ECB == 1)
 
