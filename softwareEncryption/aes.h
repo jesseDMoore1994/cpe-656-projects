@@ -67,8 +67,8 @@ void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t* iv);
 void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf);
 void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf);
 #if defined(HW_ACCEL) && (HW_ACCEL == 1)
-void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks);
-void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks);
+void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks);
+void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks);
 #endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 
 #endif // #if defined(ECB) && (ECB == !)

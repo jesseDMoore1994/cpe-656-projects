@@ -499,12 +499,17 @@ void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf)
 }
 
 #if defined(HW_ACCEL) && (HW_ACCEL == 1)
-void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks)
+void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks)
 {
-    AESACTL0 = AESSWRST;
-    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_0;
+    //configure AES for block cipher
+    AESACTL0 = AESSWRST; //AES reset
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_0; //AESOP = 00
+    AESACTL0 |= AESCMEN; // AESCMEN = 1
+    AESACTL0 = (AESACTL0 & ~AESCM0 & ~AESCM1); // AESCMx = 00
+    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1); // AESKLx = 00
+
+    //write key
     const uint8_t keylen_in_words = AES_KEYLEN/2;
-    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1);
     switch (AES_KEYLEN) {
         case 24: //AES192
             AESACTL0 |= AESKL_1;
@@ -516,27 +521,51 @@ void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
             AESACTL0 |= AESKL_0;
             break;
     }
-
     uint8_t i;
     for (i=0; i<keylen_in_words; i++)
         AESAKEY = ((uint16_t *) ctx->key)[i];
 
-    uint16_t k;
-    for (k=0; k<numBlocks; k++) {
-        for (i=0; i<8; i++)
-            AESADIN = ( (uint16_t*) in)[(k * 8) + i];
-        while (AESASTAT & AESBUSY) ;
-        for (i=0; i<8; i++)
-            ( (uint16_t*) out )[(k * 8) + i] = AESADOUT;
-    }
+    //setup dma
+    //setup dma triggers
+    DMACTL0 = DMA0TSEL_11 | DMA1TSEL_12;
+
+    //configure DMA0
+    DMA0CTL |= DMALEVEL | DMADT_0 | DMASRCINCR_0 | DMADSTINCR_3;
+    __data20_write_long((unsigned long)&DMA0SA, (unsigned long)&AESADOUT);      // Source address
+    __data20_write_long((unsigned long)&DMA0DA, (unsigned long)out);        // Destination address
+    // Size in words
+    DMA0SZ = (uint16_t)numBlocks * 8;
+    // Enable DMA0
+    DMA0CTL |= DMAEN;
+
+    //configure DMA1
+    DMA1CTL=DMADT_0 | DMALEVEL | DMASRCINCR_3 | DMADSTINCR_0;
+    __data20_write_long((unsigned long)&DMA1SA, (unsigned long)in);         // Source address
+    __data20_write_long((unsigned long)&DMA1DA, (unsigned long)&AESADIN);       // Destination address
+    // Size in words
+    DMA0SZ = (uint16_t)numBlocks * 8;
+    // Enable DMA1
+    DMA1CTL |= DMAEN;
+
+    //set number of blocks to start encryption
+    AESACTL1 = numBlocks;
+
+    // Wait for the AES accelerator to finish
+    while(AESASTAT & AESBUSY);
+    // Wait for dma transfers to finish
+    while (!(DMA0CTL & DMAIFG));
+    while (!(DMA1CTL & DMAIFG));
 }
 
-void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint16_t numBlocks)
+void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks)
 {
-    AESACTL0 = AESSWRST;
-    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_1;
+    //generate decrypt key
+    AESACTL0 = AESSWRST; //AES reset
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_2; //AESOP = 10
+    AESACTL0 &= ~AESCMEN; // AESCMEN = 0
+    AESACTL0 = (AESACTL0 & ~AESCM0 & ~AESCM1); // AESCMx = 00
+    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1); // AESKLx = 00
     const uint8_t keylen_in_words = AES_KEYLEN/2;
-    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1);
     switch (AES_KEYLEN) {
         case 24: //AES192
             AESACTL0 |= AESKL_1;
@@ -552,15 +581,42 @@ void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
     uint8_t i;
     for (i=0; i<keylen_in_words; i++)
         AESAKEY = ((uint16_t *) ctx->key)[i];
+    while(AESASTAT&AESBUSY); //wait for key to generate
 
-    uint16_t k;
-    for (k=0; k<numBlocks; k++) {
-        for (i=0; i<8; i++)
-            AESADIN = ( (uint16_t*) in)[(k * 8) + i];
-        while (AESASTAT & AESBUSY) ;
-        for (i=0; i<8; i++)
-            ( (uint16_t*) out )[(k * 8) + i] = AESADOUT;
-    }
+    //configure AES for block cipher
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_3; //AESOP = 11
+    AESACTL0 |= AESCMEN; // AESCMEN = 1
+    AESASTAT |= AESKEYWR; //use generated key
+
+    //setup dma
+    //setup dma triggers
+    DMACTL0 = DMA0TSEL_11 | DMA1TSEL_12;
+
+    //configure DMA0
+    DMA0CTL |= DMALEVEL | DMADT_0 | DMASRCINCR_0 | DMADSTINCR_3;
+    __data20_write_long((unsigned long)&DMA0SA, (unsigned long)&AESADOUT);      // Source address
+    __data20_write_long((unsigned long)&DMA0DA, (unsigned long)out);        // Destination address
+    // Size in words
+    DMA0SZ = (uint16_t)numBlocks * 8;
+    // Enable DMA0
+    DMA0CTL |= DMAEN;
+
+    //configure DMA1
+    DMA1CTL=DMADT_0 | DMALEVEL | DMASRCINCR_3 | DMADSTINCR_0;
+    __data20_write_long((unsigned long)&DMA1SA, (unsigned long)in);         // Source address
+    __data20_write_long((unsigned long)&DMA1DA, (unsigned long)&AESADIN);       // Destination address
+    // Size in words
+    DMA0SZ = (uint16_t)numBlocks * 8;
+    // Enable DMA1
+    DMA1CTL |= DMAEN;
+
+    AESACTL1 = numBlocks;
+
+    // Wait for the AES accelerator to finish
+    while(AESASTAT & AESBUSY);
+    // Wait for dma transfers to finish
+    while (!(DMA0CTL & DMAIFG));
+    while (!(DMA1CTL & DMAIFG));
 }
 #endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 
