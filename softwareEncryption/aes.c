@@ -501,15 +501,22 @@ void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf)
 #if defined(HW_ACCEL) && (HW_ACCEL == 1)
 void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks)
 {
+    /**
+     * Setting the control registers to 0 is a hack, but otherwise the decryption stalls
+     * after the first loop. Somewhere something isn't getting cleared correctly, and
+     * this makes sure that we have a known good state.
+     */
+    DMA0CTL = 0;
+    DMA1CTL = 0;
+
     //configure AES for block cipher
     AESACTL0 = AESSWRST; //AES reset
     AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_0; //AESOP = 00
     AESACTL0 |= AESCMEN; // AESCMEN = 1
     AESACTL0 = (AESACTL0 & ~AESCM0 & ~AESCM1); // AESCMx = 00
     AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1); // AESKLx = 00
-
-    //write key
     const uint8_t keylen_in_words = AES_KEYLEN/2;
+    //write key
     switch (AES_KEYLEN) {
         case 24: //AES192
             AESACTL0 |= AESKL_1;
@@ -534,7 +541,7 @@ void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
     __data20_write_long((unsigned long)&DMA0SA, (unsigned long)&AESADOUT);      // Source address
     __data20_write_long((unsigned long)&DMA0DA, (unsigned long)out);        // Destination address
     // Size in words
-    DMA0SZ = (uint16_t)numBlocks * 8;
+    DMA0SZ = numBlocks*8;
     // Enable DMA0
     DMA0CTL |= DMAEN;
 
@@ -543,7 +550,7 @@ void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
     __data20_write_long((unsigned long)&DMA1SA, (unsigned long)in);         // Source address
     __data20_write_long((unsigned long)&DMA1DA, (unsigned long)&AESADIN);       // Destination address
     // Size in words
-    DMA0SZ = (uint16_t)numBlocks * 8;
+    DMA1SZ = numBlocks*8;
     // Enable DMA1
     DMA1CTL |= DMAEN;
 
@@ -559,6 +566,14 @@ void HW_AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
 
 void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks)
 {
+    /**
+     * Setting the control registers to 0 is a hack, but otherwise the decryption stalls
+     * after the first loop. Somewhere something isn't getting cleared correctly, and
+     * this makes sure that we have a known good state.
+     */
+    DMA0CTL = 0;
+    DMA1CTL = 0;
+
     //generate decrypt key
     AESACTL0 = AESSWRST; //AES reset
     AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_2; //AESOP = 10
@@ -566,6 +581,7 @@ void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
     AESACTL0 = (AESACTL0 & ~AESCM0 & ~AESCM1); // AESCMx = 00
     AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1); // AESKLx = 00
     const uint8_t keylen_in_words = AES_KEYLEN/2;
+
     switch (AES_KEYLEN) {
         case 24: //AES192
             AESACTL0 |= AESKL_1;
@@ -597,7 +613,7 @@ void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
     __data20_write_long((unsigned long)&DMA0SA, (unsigned long)&AESADOUT);      // Source address
     __data20_write_long((unsigned long)&DMA0DA, (unsigned long)out);        // Destination address
     // Size in words
-    DMA0SZ = (uint16_t)numBlocks * 8;
+    DMA0SZ = numBlocks*8;
     // Enable DMA0
     DMA0CTL |= DMAEN;
 
@@ -606,10 +622,11 @@ void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
     __data20_write_long((unsigned long)&DMA1SA, (unsigned long)in);         // Source address
     __data20_write_long((unsigned long)&DMA1DA, (unsigned long)&AESADIN);       // Destination address
     // Size in words
-    DMA0SZ = (uint16_t)numBlocks * 8;
+    DMA1SZ = numBlocks*8;
     // Enable DMA1
     DMA1CTL |= DMAEN;
 
+    //set number of blocks to start encryption
     AESACTL1 = numBlocks;
 
     // Wait for the AES accelerator to finish
@@ -667,6 +684,198 @@ void AES_CBC_decrypt_buffer(struct AES_ctx* ctx, uint8_t* buf,  uint32_t length)
   }
 
 }
+
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)
+void HW_AES_CBC_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks)
+{
+
+    /**
+     * Setting the control registers to 0 is a hack, but otherwise the decryption stalls
+     * after the first loop. Somewhere something isn't getting cleared correctly, and
+     * this makes sure that we have a known good state.
+     */
+    DMA0CTL = 0;
+    DMA1CTL = 0;
+
+    //Reset AES
+    AESACTL0 = AESSWRST;
+    //configure AES for block cipher
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_0; //AESOP = 00
+    AESACTL0 |= AESCMEN; // AESCMEN = 1
+    AESACTL0 = (AESACTL0 & ~AESCM0 & ~AESCM1) | AESCM__CBC; // AESCMx = 01
+    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1); // AESKLx = 00
+    const uint8_t keylen_in_words = AES_KEYLEN/2;
+    const uint8_t packet_len = 16;
+    const uint8_t block_size = packet_len / 2; //blocks are words
+
+    //write key
+    switch (AES_KEYLEN) {
+        case 24: //AES192
+            AESACTL0 |= AESKL_1;
+            break;
+        case 32: //AES256
+            AESACTL0 |= AESKL_2;
+            break;
+        default: //Assume AES128
+            AESACTL0 |= AESKL_0;
+            break;
+    }
+    uint8_t i;
+    for (i=0; i<keylen_in_words; i++)
+        AESAKEY = ((uint16_t *) ctx->key)[i];
+
+    //write IV
+    for (i=0; i<block_size; i++)
+        AESAXIN = ((uint16_t *) ctx->Iv)[i];
+
+
+    //setup dma
+    /**
+     * Setup DMA:
+        DMA0: Triggered by AES trigger 0,
+            Source: AESADOUT, Destination: ciphertext,
+            Size: num_blocks*8 words, Single Transfer mode
+        DMA1: Triggered by AES trigger 1,
+            Source: plaintext, Destination: AESAXDIN,
+            Size: num_blocks*8 words, Single Transfer mode
+     */
+    //setup dma triggers
+    DMACTL0 = DMA0TSEL_11 | DMA1TSEL_12;
+
+    //configure DMA0
+    DMA0CTL |= DMALEVEL | DMADT_0 | DMASRCINCR_0 | DMADSTINCR_3;
+    __data20_write_long((unsigned long)&DMA0SA, (unsigned long)&AESADOUT);      // Source address
+    __data20_write_long((unsigned long)&DMA0DA, (unsigned long)out);        // Destination address
+    // Size in words
+    DMA0SZ = numBlocks*8;
+    // Enable DMA0
+    DMA0CTL |= DMAEN;
+
+    //configure DMA1
+    DMA1CTL=DMADT_0 | DMALEVEL | DMASRCINCR_3 | DMADSTINCR_0;
+    __data20_write_long((unsigned long)&DMA1SA, (unsigned long)in);         // Source address
+    __data20_write_long((unsigned long)&DMA1DA, (unsigned long)&AESAXDIN);       // Destination address
+    // Size in words
+    DMA1SZ = numBlocks*8;
+    // Enable DMA1
+    DMA1CTL |= DMAEN;
+
+    //set number of blocks to start encryption
+    AESACTL1 = numBlocks;
+
+    // Wait for the AES accelerator to finish
+    while(AESASTAT & AESBUSY);
+    // Wait for dma transfers to finish
+    while (!(DMA0CTL & DMAIFG));
+
+}
+
+void HW_AES_CBC_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks)
+{
+
+    /**
+     * Setting the control registers to 0 is a hack, but otherwise the decryption stalls
+     * after the first loop. Somewhere something isn't getting cleared correctly, and
+     * this makes sure that we have a known good state.
+     */
+    DMA0CTL = 0;
+    DMA1CTL = 0;
+    DMA2CTL = 0;
+
+    //generate decrypt key
+    AESACTL0 = AESSWRST; //AES reset
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_2; //AESOP = 10
+    AESACTL0 &= ~AESCMEN; // AESCMEN = 0
+    AESACTL0 = (AESACTL0 & ~AESCM0 & ~AESCM1); // AESCMx = 00
+    AESACTL0 = (AESACTL0 & ~AESKL0 & ~AESKL1); // AESKLx = 00
+    const uint8_t keylen_in_words = AES_KEYLEN/2;
+
+    switch (AES_KEYLEN) {
+        case 24: //AES192
+            AESACTL0 |= AESKL_1;
+            break;
+        case 32: //AES256
+            AESACTL0 |= AESKL_2;
+            break;
+        default: //Assume AES128
+            AESACTL0 |= AESKL_0;
+            break;
+    }
+
+    uint8_t i;
+    for (i=0; i<keylen_in_words; i++)
+        AESAKEY = ((uint16_t *) ctx->key)[i];
+    while(AESASTAT&AESBUSY); //wait for key to generate
+
+    //configure AES for block cipher
+    AESACTL0 = (AESACTL0 & ~AESOP0 & ~AESOP1) | AESOP_3; //AESOP = 11
+    AESACTL0 |= AESCMEN; // AESCMEN = 1
+    AESACTL0 = (AESACTL0 & ~AESCM0 & ~AESCM1) | AESCM__CBC; // AESCMx = 01
+    AESASTAT |= AESKEYWR; //use generated key
+
+    /**
+     * Setup DMA:
+        DMA0: Triggered by AES trigger 0,
+            Source: IV, Destination: AESAXIN,
+            Size: 8 words, Single Transfer mode
+        DMA1: Triggered by AES trigger 1,
+            Source: AESADOUT, Destination: plaintext,
+            Size: num_blocks*8 words, Single Transfer mode
+        DMA2: Triggered by AES trigger 2,
+            Source: ciphertext, Destination: AESADIN,
+            Size: num_blocks*8 words, Single Transfer mode
+     */
+
+    //setup dma
+    //setup dma triggers
+    DMACTL0 = DMA0TSEL_11 | DMA1TSEL_12;
+    DMACTL1 = DMA2TSEL_13;
+
+    //configure DMA0
+    DMA0CTL |= DMALEVEL | DMADT_0 | DMASRCINCR_3 | DMADSTINCR_0;
+    __data20_write_long((unsigned long)&DMA0SA, (unsigned long)&(ctx->Iv));      // Source address
+    __data20_write_long((unsigned long)&DMA0DA, (unsigned long)&AESAXIN);        // Destination address
+    // Size in words
+    DMA0SZ = 8;
+    // Enable DMA0
+    DMA0CTL |= DMAEN;
+
+    //configure DMA1
+    DMA1CTL=DMADT_0 | DMALEVEL | DMASRCINCR_0 | DMADSTINCR_3;
+    __data20_write_long((unsigned long)&DMA1SA, (unsigned long)&AESADOUT);         // Source address
+    __data20_write_long((unsigned long)&DMA1DA, (unsigned long)out);       // Destination address
+    // Size in words
+    DMA1SZ = numBlocks*8;
+    // Enable DMA1
+    DMA1CTL |= DMAEN;
+
+    DMA2CTL=DMADT_0 | DMALEVEL | DMASRCINCR_3 | DMADSTINCR_0;           // configure DMA 2 for decrypt
+    __data20_write_long((unsigned long)&DMA2SA, (unsigned long)in);         // Source address
+    __data20_write_long((unsigned long)&DMA2DA, (unsigned long)&AESADIN);       // Destination address
+    DMA2SZ=numBlocks*8;                             // Size packet in word
+    DMA2CTL|= DMAEN;                                // Enable DMA 2
+
+    AESACTL1 = numBlocks;
+
+    /**
+    Wait until first block is decrypted: DMA0IFG=1;
+    Setup DMA0 for further blocks:
+        DMA0: // Write previous cipher text into AES module
+            Triggered by AES trigger 0,
+            Source: ciphertext, Destination: AESAXIN,
+            Size: (num_blocks-1)*8 words, Single Transfer mod
+     */
+    while(!(DMA0CTL & DMAIFG));                         // wait end of AES decrypt first block
+    DMA0CTL=DMADT_0 | DMALEVEL | DMASRCINCR_3 | DMADSTINCR_0;           // configure DMA 0
+    __data20_write_long((unsigned long)&DMA0SA, (unsigned long)in);         // Source address
+    __data20_write_long((unsigned long)&DMA0DA, (unsigned long)&AESAXIN);       // Destination address
+    DMA0SZ=(numBlocks-1)*8;                              // Size in word - Packet-8 word
+    DMA0CTL|=DMAEN;                                 // Enable DMA 0// Wait for dma transfers to finish
+
+    // wait for dma transfers to finish
+    while(!(DMA1CTL & DMAIFG));
+}
+#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 
 #endif // #if defined(CBC) && (CBC == 1)
 

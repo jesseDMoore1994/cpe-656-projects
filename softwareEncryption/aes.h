@@ -81,6 +81,10 @@ void HW_AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, co
 //        no IV should ever be reused with the same key
 void AES_CBC_encrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, uint32_t length);
 void AES_CBC_decrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, uint32_t length);
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)
+void HW_AES_CBC_encrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks);
+void HW_AES_CBC_decrypt(const struct AES_ctx* ctx, uint8_t* in, uint8_t* out, const uint8_t numBlocks);
+#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
 
 #endif // #if defined(CBC) && (CBC == 1)
 
