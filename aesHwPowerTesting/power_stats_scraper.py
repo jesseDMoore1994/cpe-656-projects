@@ -30,13 +30,13 @@ def calculate_power_for_each_entry(data):
 # When LED is on Power averages ~8000 mW, when its off its way less.
 def find_led_ON(data, start_idx):
     for index, entry in enumerate(data[start_idx:], start_idx):
-        if entry['Power (mW)'] > 6000: # if power > 6000 mW assume LED on
+        if entry['Power (mW)'] > 3000: # if power > 4000 mW assume LED on
             return index
 
 
 def find_led_OFF(data, start_idx):
     for index, entry in enumerate(data[start_idx:], start_idx):
-        if entry['Power (mW)'] < 6000: # if power < 6000 mW assume LED off
+        if entry['Power (mW)'] < 3000: # if power < 4000 mW assume LED off
             return index
 
 
@@ -82,8 +82,8 @@ def get_trial_metrics(trial, bytes_per_trial):
         'average_current_(nA)': get_average_of_key(trial, 'Current (nA)'),
         'average_voltage_(mV)': get_average_of_key(trial, 'Voltage (mV)'),
         'average_power_(mW)': get_average_of_key(trial, 'Power (mW)'),
-        'net_energy_consumed_(uJ)': get_net_of_key(trial, 'Energy (uJ)'),
-        'energy_consumed_per_byte_(uJ/B)':  get_net_of_key(trial, 'Energy (uJ)')/bytes_per_trial
+        'average_net_energy_consumed_(uJ)': get_net_of_key(trial, 'Energy (uJ)'),
+        'average_energy_consumed_per_byte_(uJ/B)':  get_net_of_key(trial, 'Energy (uJ)')/bytes_per_trial
     }
 
 
@@ -91,9 +91,28 @@ def get_average_of_key_for_all_trials(trial_metrics, key):
     return mean([metric[key] for metric in trial_metrics])
 
 
+def get_percent_error_on_key(trial_metric, trial_set_metrics, key):
+        approx = trial_set_metrics[key]
+        exact = trial_metric[key]
+        return ( abs(approx - exact) / exact ) * 100
+
+
+
+def get_trial_error_percentage(trial, trial_metric, trial_set_metrics):
+    return {
+        'trial_start_time_(ns)': trial[0]['Time (ns)'],
+        'percent_error_avg_current': get_percent_error_on_key(trial_metric, trial_set_metrics, 'average_current_(nA)'),
+        'percent_error_avg_power': get_percent_error_on_key(trial_metric, trial_set_metrics, 'average_power_(mW)'),
+        'percent_error_avg_energy_consumed': get_percent_error_on_key(trial_metric, trial_set_metrics, 'average_net_energy_consumed_(uJ)'),
+    }
+
+def get_error_percentages(trials, trial_metrics, trial_set_metrics):
+    return [get_trial_error_percentage(trial, trial_metric, trial_set_metrics) for (trial, trial_metric) in zip(trials, trial_metrics)]
+
+
 def interpret_trials(trials, bytes_per_trial, number_of_trials):
     trial_metrics = [get_trial_metrics(trial, bytes_per_trial) for trial in trials]
-    return {
+    trial_set_metrics = {
         'number_of_trials': number_of_trials,
         'bytes_per_trial': bytes_per_trial,
         'total_bytes_processed': bytes_per_trial * number_of_trials,
@@ -101,9 +120,12 @@ def interpret_trials(trials, bytes_per_trial, number_of_trials):
         'average_current_(nA)': get_average_of_key_for_all_trials(trial_metrics, 'average_current_(nA)'),
         'average_voltage_(mV)': get_average_of_key_for_all_trials(trial_metrics, 'average_voltage_(mV)'),
         'average_power_(mW)': get_average_of_key_for_all_trials(trial_metrics, 'average_power_(mW)'),
-        'average_net_energy_consumed_(uJ)': get_average_of_key_for_all_trials(trial_metrics, 'net_energy_consumed_(uJ)'),
-        'average_energy_consumed_per_byte_(uJ/B)': get_average_of_key_for_all_trials(trial_metrics, 'energy_consumed_per_byte_(uJ/B)'),
+        'average_net_energy_consumed_(uJ)': get_average_of_key_for_all_trials(trial_metrics, 'average_net_energy_consumed_(uJ)'),
+        'average_energy_consumed_per_byte_(uJ/B)': get_average_of_key_for_all_trials(trial_metrics, 'average_energy_consumed_per_byte_(uJ/B)'),
     }
+    errors = get_error_percentages(trials, trial_metrics, trial_set_metrics)
+    trial_set_metrics['error_percentages'] = errors
+    return trial_set_metrics
 
 
 def main(input_csv, bytes_per_trial, number_of_trials):
