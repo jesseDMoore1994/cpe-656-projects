@@ -5,13 +5,7 @@
    <boolean>true</boolean>
   </void>
   <void property="name">
-   <string>EnergyTrace_2020_09_01_141224</string>
-  </void>
-  <void property="properties">
-   <void method="put">
-    <string>RawDataPath</string>
-    <string>C:\Users\JesseMoore\workspace_v10\cpe-656-projects\blink\.energytrace\EnergyTrace_2020_09_01_141224\ETData.xml</string>
-   </void>
+   <string>EnergyTrace_2020_09_12_173918</string>
   </void>
   <void property="root">
    <object class="com.ti.dvt.energytrace.core.Node" id="Node0">
@@ -841,23 +835,23 @@
           <void index="0">
            <object class="com.ti.dvt.energytrace.core.Measurement" id="Measurement0">
             <void property="accTotal">
-             <double>1.168124132E14</double>
+             <double>2.4307523914E15</double>
             </void>
             <void property="count">
-             <long>8842</long>
+             <long>42251</long>
             </void>
             <void property="lastValue">
-             <double>8899999.999997817</double>
+             <double>2400000.000008731</double>
             </void>
             <void property="name">
              <string>Energy</string>
             </void>
             <void property="value">
-             <double>2.62671999999997E10</double>
+             <double>1.1425080000002618E11</double>
             </void>
             <void property="watermarks">
              <void property="hi">
-              <double>2.62671999999997E10</double>
+              <double>1.1425080000002618E11</double>
              </void>
              <void property="lo">
               <double>9000000.0</double>
@@ -868,26 +862,26 @@
           <void index="1">
            <object class="com.ti.dvt.energytrace.core.Measurement" id="Measurement1">
             <void property="accTotal">
-             <double>3.166666E7</double>
+             <double>1.51415077E8</double>
             </void>
             <void property="count">
-             <long>8842</long>
+             <long>42251</long>
             </void>
             <void property="lastValue">
-             <double>3584.0</double>
+             <double>3583.0</double>
             </void>
             <void property="name">
              <string>Voltage</string>
             </void>
             <void property="value">
-             <double>3584.0</double>
+             <double>3583.0</double>
             </void>
             <void property="watermarks">
              <void property="hi">
-              <double>3631.0</double>
+              <double>3593.0</double>
              </void>
              <void property="lo">
-              <double>3577.0</double>
+              <double>3576.0</double>
              </void>
             </void>
            </object>
@@ -895,23 +889,23 @@
           <void index="2">
            <object class="com.ti.dvt.energytrace.core.Measurement" id="Measurement2">
             <void property="accTotal">
-             <double>6.5358365E9</double>
+             <double>2.81034468E10</double>
             </void>
             <void property="count">
-             <long>8842</long>
+             <long>42251</long>
             </void>
             <void property="lastValue">
-             <double>2327100.0</double>
+             <double>567600.0</double>
             </void>
             <void property="name">
              <string>Current</string>
             </void>
             <void property="value">
-             <double>2327100.0</double>
+             <double>567600.0</double>
             </void>
             <void property="watermarks">
              <void property="hi">
-              <double>2355800.0</double>
+              <double>2312100.0</double>
              </void>
              <void property="lo">
               <double>0.0</double>
@@ -922,10 +916,10 @@
           <void index="3">
            <object class="com.ti.dvt.energytrace.core.Measurement" id="Measurement3">
             <void property="accTotal">
-             <double>4.4223061338E13</double>
+             <double>1.009428324953E15</double>
             </void>
             <void property="count">
-             <long>8842</long>
+             <long>42251</long>
             </void>
             <void property="lastValue">
              <double>1080000.0</double>
@@ -934,14 +928,14 @@
              <string>Cycle</string>
             </void>
             <void property="value">
-             <double>1.0001941E10</double>
+             <double>4.7781644E10</double>
             </void>
             <void property="watermarks">
              <void property="hi">
-              <double>1.0001941E10</double>
+              <double>4.7781644E10</double>
              </void>
              <void property="lo">
-              <double>1085000.0</double>
+              <double>1079000.0</double>
              </void>
             </void>
            </object>
@@ -949,23 +943,23 @@
           <void index="4">
            <object class="com.ti.dvt.energytrace.core.Measurement" id="Measurement4">
             <void property="accTotal">
-             <double>23410.217503800017</double>
+             <double>100724.10165220094</double>
             </void>
             <void property="count">
-             <long>8842</long>
+             <long>42251</long>
             </void>
             <void property="lastValue">
-             <double>8.3403264</double>
+             <double>2.0337108</double>
             </void>
             <void property="name">
              <string>Power</string>
             </void>
             <void property="value">
-             <double>8.3403264</double>
+             <double>2.0337108</double>
             </void>
             <void property="watermarks">
              <void property="hi">
-              <double>8.4535306</double>
+              <double>8.2981269</double>
              </void>
              <void property="lo">
               <double>0.0</double>
@@ -1001,7 +995,7 @@
   </void>
   <void property="targetStopWatch">
    <void property="end">
-    <long>10000861000</long>
+    <long>47780564000</long>
    </void>
   </void>
  </object>

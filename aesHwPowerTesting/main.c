@@ -59,13 +59,6 @@ void sleepForOneSecond() {
 
 int main(void)
 {
-    WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
-    PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
-                                            // to activate previously configured port settings
-    P1DIR |= 0x01;                          // Set P1.0 to output direction
-    P1OUT = 0x01;
-    int exit;
-
 #if defined(AES256)
 #elif defined(AES192)
 #elif defined(AES128)
@@ -79,30 +72,29 @@ int main(void)
     return 0;
 #endif
 
-    const unsigned int num_trials = 100;
-    unsigned int i;
-    //blinkThreeTimes();
-    for(i=num_trials-1; i < num_trials; i--)
-    {
-        //blinkOnce();
-        P1OUT = 0x00;
-#if defined(HW_ACCEL) && (HW_ACCEL == 1)
-        exit = test_hw_encrypt_ecb();
-        //exit = test_hw_decrypt_ecb();
-        //exit = test_hw_encrypt_cbc();
-        //exit = test_hw_decrypt_cbc();
-#else
-        exit = test_encrypt_ecb();
-        //exit = test_decrypt_ecb();
-        //exit = test_encrypt_cbc();
-        //exit = test_decrypt_cbc();
-#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
-        //blinkOnce();
-        P1OUT = 0x01;
-        sleepForOneSecond();
-    }
+    WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
+    PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
+                                            // to activate previously configured port settings
+    P1DIR |= 0x01;                          // Set P1.0 to output direction
+    P1OUT = 0x01;
+    int exit;
+
+    sleepForOneSecond();
     P1OUT = 0x00;
-    blinkThreeTimes();
+#if defined(HW_ACCEL) && (HW_ACCEL == 1)
+    exit = test_hw_encrypt_ecb();
+    //exit = test_hw_decrypt_ecb();
+    //exit = test_hw_encrypt_cbc();
+    //exit = test_hw_decrypt_cbc();
+#else
+    exit = test_encrypt_ecb();
+    //exit = test_decrypt_ecb();
+    //exit = test_encrypt_cbc();
+    //exit = test_decrypt_cbc();
+#endif //defined(HW_ACCEL) && (HW_ACCEL == 1)
+    P1OUT = 0x01;
+    sleepForOneSecond();
+    P1OUT = 0x00;
     return exit;
 }
 
@@ -123,16 +115,27 @@ static int test_encrypt_ecb(void)
 
     uint8_t in[]  = { 0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a };
     struct AES_ctx ctx;
-
-    //512 encryptions of 16 bytes, totaling 8,192 bytes processed
     AES_init_ctx(&ctx, key);
-    unsigned int i;
-    for(i = 511; i < 512; i--) AES_ECB_encrypt(&ctx, in);
 
-    if (0 == memcmp((char*) out, (char*) in, 16)) {
-        return(0);
-    } else {
-        return(1);
+    //2048 encryptions of 16 bytes, totaling 32,768 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_encryptions = 2048;
+    for(i = num_encryptions-1; i < num_encryptions; i--) {
+        AES_ECB_encrypt(&ctx, in);
+        if (0 == memcmp((char*) out, (char*) in, 16)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=15; j<16; j--) out[j] = 0x00;
+    }
+    if(success == num_encryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }
 
@@ -157,14 +160,25 @@ static int test_hw_encrypt_ecb(void)
 
     AES_init_ctx(&ctx, key);
 
-    //512 encryptions of 16 bytes, totaling 8,192 bytes processed
-    unsigned int i;
-    for(i = 511; i < 512; i--) HW_AES_ECB_encrypt(&ctx, in, out, 1);
-
-    if (0 == memcmp((char*) expected_out, (char*) out, 16)) {
-        return(0);
-    } else {
-        return(1);
+    //32768 encryptions of 16 bytes, totaling 524,288 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_encryptions = 32768;
+    for(i = num_encryptions-1; i < num_encryptions; i--) {
+        HW_AES_ECB_encrypt(&ctx, in, out, 1);
+        if (0 == memcmp((char*) expected_out, (char*) out, 16)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=15; j<16; j--) out[j] = 0x00;
+    }
+    if(success == num_encryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }
 
@@ -186,15 +200,26 @@ static int test_decrypt_ecb(void)
     uint8_t out[]   = { 0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a };
     struct AES_ctx ctx;
 
-    //512 decryptions of 16 bytes, totaling 8,192 bytes processed
     AES_init_ctx(&ctx, key);
-    unsigned int i;
-    for(i = 511; i < 512; i--) AES_ECB_decrypt(&ctx, in);
-
-    if (0 == memcmp((char*) out, (char*) in, 16)) {
-        return(0);
-    } else {
-        return(1);
+    //2048 decryptions of 16 bytes, totaling 32,768 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_decryptions = 2048;
+    for(i = num_decryptions-1; i < num_decryptions; i--) {
+        AES_ECB_decrypt(&ctx, in);
+        if (0 == memcmp((char*) out, (char*) in, 16)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=15; j<16; j--) out[j] = 0x00;
+    }
+    if(success == num_decryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }
 
@@ -217,15 +242,26 @@ static int test_hw_decrypt_ecb(void)
     uint8_t out[]   = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     struct AES_ctx ctx;
 
-    //512 decryptions of 16 bytes, totaling 8,192 bytes processed
     AES_init_ctx(&ctx, key);
-    unsigned int i;
-    for(i = 511; i < 512; i--) HW_AES_ECB_decrypt(&ctx, in, out, 1);
-
-    if (0 == memcmp((char*) out, (char*) expected_out, 16)) {
-        return(0);
-    } else {
-        return(1);
+    //32768 Decryptions of 16 bytes, totaling 524,288 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_decryptions = 32768;
+    for(i = num_decryptions-1; i < num_decryptions; i--) {
+        HW_AES_ECB_decrypt(&ctx, in, out, 1);
+        if (0 == memcmp((char*) expected_out, (char*) out, 16)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=15; j<16; j--) out[j] = 0x00;
+    }
+    if(success == num_decryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }
 
@@ -258,15 +294,25 @@ static int test_encrypt_cbc(void)
                       0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10 };
     struct AES_ctx ctx;
 
-    //128 encryptions of 64 bytes, totaling 8,192 bytes processed
-    AES_init_ctx_iv(&ctx, key, iv);
-    unsigned int i;
-    for(i = 127; i < 128; i--) AES_CBC_encrypt_buffer(&ctx, in, 64);
-
-    if (0 == memcmp((char*) out, (char*) in, 64)) {
-        return(0);
-    } else {
-        return(1);
+    //512 encryptions of 64 bytes, totaling 32,768 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_encryptions = 512;
+    for(i = num_encryptions-1; i < num_encryptions; i--) {
+        AES_CBC_encrypt_buffer(&ctx, in, 64);
+        if (0 == memcmp((char*) out, (char*) in, 64)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=15; j<16; j--) out[j] = 0x00;
+    }
+    if(success == num_encryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }
 
@@ -302,16 +348,27 @@ static int test_hw_encrypt_cbc(void)
                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     struct AES_ctx ctx;
-
-    //128 encryptions of 64 bytes, totaling 8,192 bytes processed
     AES_init_ctx_iv(&ctx, key, iv);
-    unsigned int i;
-    for(i = 127; i < 128; i--) HW_AES_CBC_encrypt(&ctx, in, out, 4);
 
-    if (0 == memcmp((char*) out, (char*) expected_out, 64)) {
-        return(0);
-    } else {
-        return(1);
+    //8192 encryptions of 64 bytes, totaling 524,288 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_encryptions = 8192;
+    for(i = num_encryptions-1; i < num_encryptions; i--) {
+        HW_AES_CBC_encrypt(&ctx, in, out, 4);
+        if (0 == memcmp((char*) out, (char*) in, 64)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=63; j<64; j--) out[j] = 0x00;
+    }
+    if(success == num_encryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }
 
@@ -346,15 +403,25 @@ static int test_decrypt_cbc(void)
 
     struct AES_ctx ctx;
 
-    //128 decryptions of 64 bytes, totaling 8,192 bytes processed
-    AES_init_ctx_iv(&ctx, key, iv);
-    unsigned int i;
-    for(i = 127; i < 128; i--) AES_CBC_decrypt_buffer(&ctx, in, 64);
-
-    if (0 == memcmp((char*) out, (char*) in, 64)) {
-        return(0);
-    } else {
-        return(1);
+    //512 encryptions of 64 bytes, totaling 32,768 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_decryptions = 512;
+    for(i = num_decryptions-1; i < num_decryptions; i--) {
+        AES_CBC_decrypt_buffer(&ctx, in, 64);
+        if (0 == memcmp((char*) out, (char*) in, 64)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=15; j<16; j--) out[j] = 0x00;
+    }
+    if(success == num_decryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }
 
@@ -392,15 +459,26 @@ static int test_hw_decrypt_cbc(void)
                       0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10 };
 
     struct AES_ctx ctx;
-
-    //128 decryptions of 64 bytes, totaling 8,192 bytes processed
     AES_init_ctx_iv(&ctx, key, iv);
-    unsigned int i;
-    for(i = 127; i < 128; i--) HW_AES_CBC_decrypt(&ctx, in, out, 4);
 
-    if (0 == memcmp((char*) out, (char*) expected_out, 64)) {
-        return(0);
-    } else {
-        return(1);
+    //8192 encryptions of 64 bytes, totaling 524,288 bytes processed
+    unsigned int i, j;
+    unsigned int success = 0;
+    unsigned int failure = 0;
+    const unsigned int num_decryptions = 8192;
+    for(i = num_decryptions-1; i < num_decryptions; i--) {
+        HW_AES_CBC_decrypt(&ctx, in, out, 4);
+        if (0 == memcmp((char*) out, (char*) in, 64)) {
+            success++;
+        } else {
+            failure++;
+        }
+        for(j=63; j<64; j--) out[j] = 0x00;
+    }
+    if(success == num_decryptions) {
+        return 0;
+    }
+    else {
+        return 1;
     }
 }

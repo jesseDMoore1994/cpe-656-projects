@@ -22,17 +22,12 @@ void main(void) {
     WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
                                             // to activate previously configured port settings
-    P1DIR |= 0x01;                          // Set P1.0 to output direction
+    WDTCTL = WDTPW | WDTHOLD;                 // don't touch it, it's for the watchdog stuff
 
-    for(;;) {
-        volatile unsigned int i;            // volatile to prevent optimization
+    P1DIR |= (BIT0 | BIT6);                   // set P1DIR with P0 and P6 to high (1)
 
-        P1OUT ^= 0x01;                      // Toggle P1.0 using exclusive-OR
-
-        i = 10000;                          // SW Delay
-        do i--;
-        while(i != 0);
+    for (;;) {
+        P1OUT ^= (BIT0 | BIT6);               // toggle the P0 and P6 of P1OUT with 1 and 0
+        __delay_cycles(250000);               // 250000 microseconds between each cycle
     }
-
-    P1OUT = 0x00;
 }
