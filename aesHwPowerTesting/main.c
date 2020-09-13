@@ -8,7 +8,7 @@
 #define CBC 1
 #define CTR 0
 #define ECB 1
-#define HW_ACCEL 1
+#define HW_ACCEL 0
 #define AES256
 
 #include "aes.h"
@@ -117,11 +117,11 @@ static int test_encrypt_ecb(void)
     struct AES_ctx ctx;
     AES_init_ctx(&ctx, key);
 
-    //2048 encryptions of 16 bytes, totaling 32,768 bytes processed
+    //1024 encryptions of 16 bytes, totaling 16,348 bytes processed
     unsigned int i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
-    const unsigned int num_encryptions = 2048;
+    const unsigned int num_encryptions = 1024;
     for(i = num_encryptions-1; i < num_encryptions; i--) {
         AES_ECB_encrypt(&ctx, in);
         if (0 == memcmp((char*) out, (char*) in, 16)) {
@@ -201,11 +201,11 @@ static int test_decrypt_ecb(void)
     struct AES_ctx ctx;
 
     AES_init_ctx(&ctx, key);
-    //2048 decryptions of 16 bytes, totaling 32,768 bytes processed
+    //1024 decryptions of 16 bytes, totaling 16,384 bytes processed
     unsigned int i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
-    const unsigned int num_decryptions = 2048;
+    const unsigned int num_decryptions = 1024;
     for(i = num_decryptions-1; i < num_decryptions; i--) {
         AES_ECB_decrypt(&ctx, in);
         if (0 == memcmp((char*) out, (char*) in, 16)) {
