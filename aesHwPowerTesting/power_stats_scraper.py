@@ -1,4 +1,5 @@
 import argparse
+import glob
 from statistics import mean
 from pprint import PrettyPrinter
 pp = PrettyPrinter()
@@ -17,6 +18,13 @@ def parse_csv(filename):
                 )
             } for line in lines[1:]
         ]
+
+
+def get_data_from_files(pattern):
+    return [
+        calculate_power_for_each_entry(parse_csv(input_csv))
+        for input_csv in glob.glob(pattern)
+    ]
 
 
 def calculate_power_for_each_entry(data):
@@ -40,28 +48,10 @@ def find_led_OFF(data, start_idx):
             return index
 
 
-def find_first_trial(data):
-    led_on_idx = find_led_ON(data, 0)
-    led_off_idx = find_led_OFF(data, led_on_idx)
-    return led_off_idx
-
-
-def parse_next_trial(data, start_idx):
-    led_on_idx = find_led_ON(data, start_idx)
-    led_off_idx = find_led_OFF(data, led_on_idx)
-    trial_data = data[start_idx:led_on_idx-1]
-    next_trial_idx = led_off_idx
-    return trial_data, next_trial_idx
-
-
-def get_trials(data, number_of_trials):
-    trial_data = []
-    trial_idx = find_first_trial(data)
-    for _ in range(number_of_trials):
-        trial, next_trial_idx = parse_next_trial(data, trial_idx)
-        trial_data.append(trial)
-        trial_idx = next_trial_idx
-    return trial_data
+def get_encryption_data(trial):
+    data_start_idx = find_led_OFF(trial, find_led_ON(trial, 0))
+    data_end_idx = find_led_ON(trial, data_start_idx)
+    return trial[data_start_idx:data_end_idx]
 
 
 def get_net_of_key(trial, key):
@@ -72,75 +62,111 @@ def get_average_of_key(trial, key):
     return mean([datapoint[key] for datapoint in trial])
 
 
-def get_trial_metrics(trial, bytes_per_trial):
+def get_percentage_error_for_datapoint(datapoint, key, estimate):
+    return (
+        abs(datapoint[key] - estimate)
+        / datapoint[key]
+    ) * 100
+
+
+def get_percentage_errors_for_key(trial, key, estimate):
+    return [
+        get_percentage_error_for_datapoint(datapoint, key, estimate)
+        for datapoint in trial
+    ]
+
+
+def get_average_percentage_error_for_key(trial, key, estimate):
+    return mean(get_percentage_errors_for_key(trial, key, estimate))
+
+
+def get_metrics(trial, bytes_per_trial):
     return {
-        'start_time_(ns)' : trial[0]['Time (ns)'],
-        'end_time_(ns)' : trial[-1]['Time (ns)'],
-        'time_delta_(ns)' : get_net_of_key(trial, 'Time (ns)'),
-        'number_of_datapoints': len(trial),
-        'number_of_bytes_processed': bytes_per_trial,
-        'average_current_(nA)': get_average_of_key(trial, 'Current (nA)'),
-        'average_voltage_(mV)': get_average_of_key(trial, 'Voltage (mV)'),
-        'average_power_(mW)': get_average_of_key(trial, 'Power (mW)'),
-        'average_net_energy_consumed_(uJ)': get_net_of_key(trial, 'Energy (uJ)'),
-        'average_energy_consumed_per_byte_(uJ/B)':  get_net_of_key(trial, 'Energy (uJ)')/bytes_per_trial
+#        'start_time(ns)' : trial[0]['Time (ns)'],
+#        'end_time(ns)' : trial[-1]['Time (ns)'],
+        'time_delta(ns)' : get_net_of_key(trial, 'Time (ns)'),
+#        'number_of_datapoints': len(trial),
+#        'number_of_bytes_processed': bytes_per_trial,
+#        'current_average(nA)': get_average_of_key(trial, 'Current (nA)'),
+#        'current_average_percentage_error(%)': get_average_percentage_error_for_key(
+#            trial, 'Current (nA)', get_average_of_key(trial, 'Current (nA)')
+#        ),
+#        'voltage_average(mV)': get_average_of_key(trial, 'Voltage (mV)'),
+#        'voltage_average_percentage_error(%)': get_average_percentage_error_for_key(
+#            trial, 'Voltage (mV)', get_average_of_key(trial, 'Voltage (mV)')
+#        ),
+        'power_average(mW)': get_average_of_key(trial, 'Power (mW)'),
+        'power_average_percentage_error(%)': get_average_percentage_error_for_key(
+            trial, 'Power (mW)', get_average_of_key(trial, 'Power (mW)')
+        ),
+#        'net_energy_consumed_(uJ)': get_net_of_key(trial, 'Energy (uJ)'),
+        'estimated_power_per_byte(mW/B)': get_average_of_key(trial, 'Power (mW)')/bytes_per_trial,
+        'estimated_energy_consumed_per_byte(uJ/B)':  get_net_of_key(trial, 'Energy (uJ)')/bytes_per_trial,
+        'estimated_time_consumed_per_byte(ns/B)':  get_net_of_key(trial, 'Time (ns)')/bytes_per_trial,
     }
 
 
-def get_average_of_key_for_all_trials(trial_metrics, key):
-    return mean([metric[key] for metric in trial_metrics])
+def get_trial_metrics(glob_pattern, bytes_per_trial):
+    return [
+        get_metrics(get_encryption_data(trial), bytes_per_trial)
+        for trial in get_data_from_files(glob_pattern)
+    ]
 
 
-def get_percent_error_on_key(trial_metric, trial_set_metrics, key):
-        approx = trial_set_metrics[key]
-        exact = trial_metric[key]
-        return ( abs(approx - exact) / exact ) * 100
-
-
-
-def get_trial_error_percentage(trial, trial_metric, trial_set_metrics):
+def get_complete_metrics(trial_metrics):
     return {
-        'trial_start_time_(ns)': trial[0]['Time (ns)'],
-        'percent_error_avg_current': get_percent_error_on_key(trial_metric, trial_set_metrics, 'average_current_(nA)'),
-        'percent_error_avg_power': get_percent_error_on_key(trial_metric, trial_set_metrics, 'average_power_(mW)'),
-        'percent_error_avg_energy_consumed': get_percent_error_on_key(trial_metric, trial_set_metrics, 'average_net_energy_consumed_(uJ)'),
+#        'average_current_percentage_error(%)': get_average_of_key(
+#            trial_metrics,
+#            'current_average_percentage_error(%)'
+#        ),
+#        'average_power_percentage_error(%)': get_average_of_key(
+#            trial_metrics,
+#            'voltage_average_percentage_error(%)'
+#        ),
+#        'average_voltage_percentage_error(%)': get_average_of_key(
+#            trial_metrics,
+#            'voltage_average_percentage_error(%)'
+#        ),
+        'estimated_power_per_byte(mW/B)': get_average_of_key(
+            trial_metrics, 'estimated_power_per_byte(mW/B)'
+        ),
+        'estimated_energy_consumed_per_byte(uJ/B)': get_average_of_key(
+            trial_metrics, 'estimated_energy_consumed_per_byte(uJ/B)'
+        ),
+        'estimated_time_consumed_per_byte(ns/B)': get_average_of_key(
+            trial_metrics, 'estimated_time_consumed_per_byte(ns/B)'
+        ),
+        'percent_error_power_per_byte(%)': get_average_percentage_error_for_key(
+            trial_metrics,
+            'estimated_power_per_byte(mW/B)',
+            get_average_of_key(trial_metrics, 'estimated_power_per_byte(mW/B)')
+        ),
+        'percent_error_energy_consumed_per_byte(%)': get_average_percentage_error_for_key(
+            trial_metrics,
+            'estimated_energy_consumed_per_byte(uJ/B)',
+            get_average_of_key(trial_metrics, 'estimated_energy_consumed_per_byte(uJ/B)')
+        ),
+        'percent_error_time_consumed_per_byte(%)': get_average_percentage_error_for_key(
+            trial_metrics,
+            'estimated_time_consumed_per_byte(ns/B)',
+            get_average_of_key(trial_metrics, 'estimated_time_consumed_per_byte(ns/B)')
+        ),
     }
 
-def get_error_percentages(trials, trial_metrics, trial_set_metrics):
-    return [get_trial_error_percentage(trial, trial_metric, trial_set_metrics) for (trial, trial_metric) in zip(trials, trial_metrics)]
 
-
-def interpret_trials(trials, bytes_per_trial, number_of_trials):
-    trial_metrics = [get_trial_metrics(trial, bytes_per_trial) for trial in trials]
-    trial_set_metrics = {
-        'number_of_trials': number_of_trials,
-        'bytes_per_trial': bytes_per_trial,
-        'total_bytes_processed': bytes_per_trial * number_of_trials,
-        'average_time_(ns)': get_average_of_key_for_all_trials(trial_metrics, 'time_delta_(ns)'),
-        'average_current_(nA)': get_average_of_key_for_all_trials(trial_metrics, 'average_current_(nA)'),
-        'average_voltage_(mV)': get_average_of_key_for_all_trials(trial_metrics, 'average_voltage_(mV)'),
-        'average_power_(mW)': get_average_of_key_for_all_trials(trial_metrics, 'average_power_(mW)'),
-        'average_net_energy_consumed_(uJ)': get_average_of_key_for_all_trials(trial_metrics, 'average_net_energy_consumed_(uJ)'),
-        'average_energy_consumed_per_byte_(uJ/B)': get_average_of_key_for_all_trials(trial_metrics, 'average_energy_consumed_per_byte_(uJ/B)'),
+def main(glob_pattern, bytes_per_trial):
+    return {
+        'complete_metrics': get_complete_metrics(get_trial_metrics(glob_pattern, bytes_per_trial)),
+        'trial_metrics': get_trial_metrics(glob_pattern, bytes_per_trial)
     }
-    errors = get_error_percentages(trials, trial_metrics, trial_set_metrics)
-    trial_set_metrics['error_percentages'] = errors
-    return trial_set_metrics
-
-
-def main(input_csv, bytes_per_trial, number_of_trials):
-    data = calculate_power_for_each_entry(parse_csv(input_csv))
-    trials = get_trials(data, number_of_trials)
-    return interpret_trials(trials, bytes_per_trial, number_of_trials)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='This project returns interpreted power data from a ccs energytrace csv.'
     )
-    parser.add_argument('-i','--input-csv',help='CSV file to be interpreted', required=True)
+    parser.add_argument('-i','--input-glob',help='glob of CSV files to be interpreted', required=True)
     parser.add_argument('-b','--bytes-per-trial', help='Bytes parsed in each trail',required=True)
-    parser.add_argument('-n','--number-of-trials', help='Number of trials in csv file',required=True)
     args = parser.parse_args()
-    results = main(args.input_csv, int(args.bytes_per_trial), int(args.number_of_trials))
+    results = main(args.input_glob, int(args.bytes_per_trial))
     pp.pprint(results)
