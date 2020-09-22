@@ -1,5 +1,6 @@
 import argparse
 import glob
+import json
 from statistics import mean
 from pprint import PrettyPrinter
 pp = PrettyPrinter()
@@ -167,6 +168,11 @@ if __name__ == "__main__":
     )
     parser.add_argument('-i','--input-glob',help='glob of CSV files to be interpreted', required=True)
     parser.add_argument('-b','--bytes-per-trial', help='Bytes parsed in each trail',required=True)
+    parser.add_argument('-o','--output-file', help='filename to store output json',required=False)
     args = parser.parse_args()
     results = main(args.input_glob, int(args.bytes_per_trial))
-    pp.pprint(results)
+    if args.output_file:
+        with open(args.output_file, "w") as f:
+                json.dump(results, f)
+    else:
+        pp.pprint(results)
