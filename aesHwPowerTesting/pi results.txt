@@ -1,0 +1,89 @@
+1
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 161878320
+Time total: 30
+
+2
+@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 163100000
+Time total: 30
+
+3
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 160390016
+Time total: 30
+
+4
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 162293168
+Time total: 30
+
+5
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 161714544
+Time total: 30
+
+6
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 161864224
+Time total: 30
+
+7
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 162621584
+Time total: 30
+
+8
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 161505504
+Time total: 30
+
+9
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 162118368
+Time total: 30
+
+10
+pi@raspberrypi:~/Projects/tiny-AES-c$ ./test.elf
+
+Testing AES256
+
+Success!
+Bytes processed: 161878320
+Time total: 30
