@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 
 // Enable ECB, CTR and CBC mode. Note this can be done before including aes.h or at compile-time.
 // E.g. with GCC by using the -D flag: gcc -c aes.c -DCBC=0 -DCTR=1 -DECB=1
@@ -117,11 +118,11 @@ static int test_encrypt_ecb(void)
     struct AES_ctx ctx;
     AES_init_ctx(&ctx, key);
 
-    //1024 encryptions of 16 bytes, totaling 16,348 bytes processed
+    //2310 encryptions of 16 bytes, totaling 36960 bytes processed
     unsigned int i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
-    const unsigned int num_encryptions = 1024;
+    const unsigned int num_encryptions = 2310;
     for(i = num_encryptions-1; i < num_encryptions; i--) {
         AES_ECB_encrypt(&ctx, in);
         if (0 == memcmp((char*) out, (char*) in, 16)) {
@@ -160,11 +161,11 @@ static int test_hw_encrypt_ecb(void)
 
     AES_init_ctx(&ctx, key);
 
-    //32768 encryptions of 16 bytes, totaling 524,288 bytes processed
-    unsigned int i, j;
+    //73300 encryptions of 16 bytes, totaling 1,172,800 bytes processed
+    unsigned long i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
-    const unsigned int num_encryptions = 32768;
+    const unsigned long num_encryptions = 73300;
     for(i = num_encryptions-1; i < num_encryptions; i--) {
         HW_AES_ECB_encrypt(&ctx, in, out, 1);
         if (0 == memcmp((char*) expected_out, (char*) out, 16)) {
