@@ -9,8 +9,15 @@
 #define CBC 1
 #define CTR 0
 #define ECB 1
-#define HW_ACCEL 0
+
+//set HW_ACCEL to 1 to use AES HW, 0 for software only
+#define HW_ACCEL 1
+
+//defined to use AES256, can also set AES192 or AES128
 #define AES256
+
+//Define clock speed to 16MHz, can also set CLOCK_SPEED_8MHZ for 8 MHz, or remove entirely for 1MHz
+#define CLOCK_SPEED_16MHZ
 
 #include "aes.h"
 
@@ -55,7 +62,13 @@ void blinkOnce() {
 }
 
 void sleepForOneSecond() {
+#if defined(CLOCK_SPEED_16MHZ)
+    __delay_cycles(16000000);
+#elif defined(CLOCK_SPEED_8MHZ)
+    __delay_cycles(8000000);
+#else //assume default 1MHZ clock
     __delay_cycles(1000000);
+#endif
 }
 
 int main(void)
@@ -78,6 +91,32 @@ int main(void)
                                             // to activate previously configured port settings
     P1DIR |= 0x01;                          // Set P1.0 to output direction
     P1OUT = 0x01;
+
+
+#if defined(CLOCK_SPEED_16MHZ)
+    // Configure one FRAM waitstate as required by the device datasheet for MCLK
+    // operation beyond 8MHz _before_ configuring the clock system.
+    FRCTL0 = FRCTLPW | NWAITS_1;
+    // Clock System Setup
+    CSCTL0_H = CSKEY >> 8;                    // Unlock CS registers
+    CSCTL1 = DCORSEL | DCOFSEL_4;             // Set DCO to 16MHz
+    CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK; // Set SMCLK = MCLK = DCO,
+                                              // ACLK = VLOCLK
+    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;     // Set all dividers
+    CSCTL0_H = 0;                             // Lock CS registers
+#elif defined(CLOCK_SPEED_8MHZ)
+    // Configure one FRAM waitstate as required by the device datasheet for MCLK
+    // operation beyond 8MHz _before_ configuring the clock system.
+    FRCTL0 = FRCTLPW | NWAITS_1;
+    CSCTL0_H = CSKEY >> 8;                    // Unlock CS registers
+    CSCTL1 = DCOFSEL_6;                       // Set DCO to 8MHz
+    CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;  // Set SMCLK = MCLK = DCO
+                                              // ACLK = VLOCLK
+    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;     // Set all dividers to 1
+    CSCTL0_H = 0;                             // Lock CS registers
+#else //default 1MHZ clock
+#endif
+
     int exit;
 
     sleepForOneSecond();
@@ -122,7 +161,15 @@ static int test_encrypt_ecb(void)
     unsigned int i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
+
+#if defined(CLOCK_SPEED_16MHZ)
+    const unsigned int num_encryptions = 32000;
+#elif defined(CLOCK_SPEED_8MHZ)
+    const unsigned int num_encryptions = 15750;
+#else //assume default 1MHZ clock
     const unsigned int num_encryptions = 2310;
+#endif
+
     for(i = num_encryptions-1; i < num_encryptions; i--) {
         AES_ECB_encrypt(&ctx, in);
         if (0 == memcmp((char*) out, (char*) in, 16)) {
@@ -165,7 +212,16 @@ static int test_hw_encrypt_ecb(void)
     unsigned long i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
+
+#if defined(CLOCK_SPEED_16MHZ)
+    const unsigned long num_encryptions = 1133800;
+#elif defined(CLOCK_SPEED_8MHZ)
+    const unsigned long num_encryptions = 547000;
+#else //assume default 1MHZ clock
     const unsigned long num_encryptions = 73300;
+#endif
+
+
     for(i = num_encryptions-1; i < num_encryptions; i--) {
         HW_AES_ECB_encrypt(&ctx, in, out, 1);
         if (0 == memcmp((char*) expected_out, (char*) out, 16)) {
