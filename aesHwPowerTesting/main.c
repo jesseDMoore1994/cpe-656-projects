@@ -17,7 +17,7 @@
 #define AES256
 
 //Define clock speed to 16MHz, can also set CLOCK_SPEED_8MHZ for 8 MHz, or remove entirely for 1MHz
-#define CLOCK_SPEED_16MHZ
+#define CLOCK_SPEED_8MHZ
 
 #include "aes.h"
 
@@ -157,17 +157,17 @@ static int test_encrypt_ecb(void)
     struct AES_ctx ctx;
     AES_init_ctx(&ctx, key);
 
-    //2310 encryptions of 16 bytes, totaling 36960 bytes processed
+
     unsigned int i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
 
 #if defined(CLOCK_SPEED_16MHZ)
-    const unsigned int num_encryptions = 32000;
+    const unsigned int num_encryptions = 32000;//32000 encryptions of 16 bytes, totaling 512000 bytes processed
 #elif defined(CLOCK_SPEED_8MHZ)
-    const unsigned int num_encryptions = 15750;
+    const unsigned int num_encryptions = 15750;//2310 encryptions of 16 bytes, totaling 252000 bytes processed
 #else //assume default 1MHZ clock
-    const unsigned int num_encryptions = 2310;
+    const unsigned int num_encryptions = 2310;//2310 encryptions of 16 bytes, totaling 36960 bytes processed
 #endif
 
     for(i = num_encryptions-1; i < num_encryptions; i--) {
@@ -208,17 +208,17 @@ static int test_hw_encrypt_ecb(void)
 
     AES_init_ctx(&ctx, key);
 
-    //73300 encryptions of 16 bytes, totaling 1,172,800 bytes processed
+
     unsigned long i, j;
     unsigned int success = 0;
     unsigned int failure = 0;
 
 #if defined(CLOCK_SPEED_16MHZ)
-    const unsigned long num_encryptions = 1133800;
+    const unsigned long num_encryptions = 1133800;//1133800 encryptions of 16 bytes, totaling 18,140,800 bytes processed
 #elif defined(CLOCK_SPEED_8MHZ)
-    const unsigned long num_encryptions = 547000;
+    const unsigned long num_encryptions = 547000;//547000 encryptions of 16 bytes, totaling 8,752,000 bytes processed
 #else //assume default 1MHZ clock
-    const unsigned long num_encryptions = 73300;
+    const unsigned long num_encryptions = 73300;//1133800 encryptions of 16 bytes, totaling 1,172,800 bytes processed
 #endif
 
 
